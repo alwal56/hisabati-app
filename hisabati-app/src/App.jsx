@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import './app.css'
 import { kv } from './storage.js'
 import { requestNotifPermission, schedulePaymentReminder, cancelNotification } from './notifications.js'
 import { nativeShare } from './share.js'
@@ -139,252 +140,7 @@ const I = {
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
-const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap');
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#080810;--sf:#11111d;--sf2:#191926;--sf3:#222233;
-  --b1:rgba(255,255,255,.06);--b2:rgba(255,255,255,.11);--b3:rgba(255,255,255,.18);
-  --tx:#eeeef8;--tx2:#8080a0;--tx3:#484860;
-  --gold:#d4a843;--gold2:#f2c455;--gdim:rgba(212,168,67,.11);--gglow:rgba(212,168,67,.28);
-  --grn:#22c55e;--gdim2:rgba(34,197,94,.1);
-  --red:#ef4444;--rdim:rgba(239,68,68,.1);
-  --r:18px;--rs:12px;--rx:9px;
-  --sat: env(safe-area-inset-top, 0px);
-  --sab: env(safe-area-inset-bottom, 0px);
-}
-html,body{height:100%;overflow:hidden;overscroll-behavior:none;background:var(--bg)}
-body{color:var(--tx);font-family:'IBM Plex Sans Arabic',sans-serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
-input,button,select,textarea{font-family:inherit;-webkit-appearance:none;appearance:none}
-button{cursor:pointer}
-
-/* scroll containers */
-.scroll-y{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
-
-.app{height:100vh;height:100dvh;max-width:430px;margin:0 auto;background:var(--bg);direction:rtl;display:flex;flex-direction:column;position:relative}
-.scr{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;position:relative;z-index:1}
-.pb{padding-bottom:calc(88px + var(--sab))}
-
-/* ── Auth ── */
-.a-bg{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:calc(24px + var(--sat)) 20px calc(24px + var(--sab));position:relative;overflow:hidden}
-.orb{position:absolute;border-radius:50%;pointer-events:none}
-.orb1{top:-80px;right:-60px;width:280px;height:280px;background:radial-gradient(circle,rgba(212,168,67,.13) 0%,transparent 70%)}
-.orb2{bottom:-100px;left:-80px;width:320px;height:320px;background:radial-gradient(circle,rgba(100,80,200,.07) 0%,transparent 70%)}
-.a-logo{width:72px;height:72px;border-radius:22px;background:linear-gradient(135deg,#1e1a0e,#2a2010);border:1.5px solid rgba(212,168,67,.28);display:flex;align-items:center;justify-content:center;margin-bottom:18px;box-shadow:0 8px 32px rgba(212,168,67,.14);font-size:32px}
-.a-title{font-size:26px;font-weight:700;letter-spacing:-.5px;margin-bottom:5px;text-align:center}
-.a-sub{font-size:13px;color:var(--tx2);text-align:center;margin-bottom:26px;line-height:1.5}
-.a-card{width:100%;background:var(--sf);border:1px solid var(--b2);border-radius:var(--r);padding:22px 18px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
-.m-tabs{display:flex;background:var(--sf2);border-radius:var(--rx);padding:3px;gap:3px;margin-bottom:16px}
-.m-tab{flex:1;padding:9px 6px;border-radius:7px;border:none;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;color:var(--tx2);background:transparent;transition:all .2s}
-.m-tab.on{background:var(--sf3);color:var(--tx);box-shadow:0 1px 4px rgba(0,0,0,.35)}
-.m-tab svg{width:14px;height:14px}
-.afield{margin-bottom:13px}
-.afield label{font-size:11px;color:var(--tx2);font-weight:600;display:block;margin-bottom:5px;letter-spacing:.3px}
-.aiwrap{position:relative}
-.ainput{width:100%;background:var(--sf2);border:1px solid var(--b2);border-radius:var(--rx);padding:13px 42px 13px 13px;color:var(--tx);font-size:15px;outline:none;direction:rtl;transition:border-color .2s,box-shadow .2s}
-.ainput:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,168,67,.1)}
-.ainput::placeholder{color:var(--tx3)}
-.ainput.ltr{direction:ltr;text-align:left;padding-right:13px;padding-left:42px}
-.ai-icon{position:absolute;right:13px;top:50%;transform:translateY(-50%);color:var(--tx3);pointer-events:none;display:flex}
-.ai-icon.l{right:auto;left:13px}
-.ai-icon svg{width:15px;height:15px}
-.a-eye{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--tx3);cursor:pointer;background:none;border:none;padding:3px;display:flex}
-.a-eye svg{width:16px;height:16px}
-.pbar{height:3px;border-radius:2px;margin-top:5px;background:var(--sf3);overflow:hidden}
-.pbar-f{height:100%;border-radius:2px;transition:all .4s}
-.sw{background:#ef4444}.sm{background:#f59e0b}.sg{background:#22c55e}
-.a-err{background:var(--rdim);border:1px solid rgba(239,68,68,.22);border-radius:var(--rx);padding:10px 13px;font-size:12px;color:var(--red);margin-bottom:12px}
-.a-ok{background:var(--gdim2);border:1px solid rgba(34,197,94,.22);border-radius:var(--rx);padding:10px 13px;font-size:12px;color:var(--grn);margin-bottom:12px}
-.a-btn{width:100%;padding:14px;margin-top:5px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#160f00;border:none;border-radius:var(--rx);font-size:14px;font-weight:700;box-shadow:0 4px 18px var(--gglow);transition:all .2s;display:flex;align-items:center;justify-content:center;gap:7px}
-.a-btn:active{transform:scale(.98)}
-.a-btn:disabled{opacity:.5;pointer-events:none}
-.a-btn svg{width:16px;height:16px}
-.a-ghost{width:100%;padding:12px;margin-top:8px;background:var(--sf2);color:var(--tx2);border:1px solid var(--b2);border-radius:var(--rx);font-size:13px;font-weight:500;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px}
-.a-ghost svg{width:14px;height:14px}
-.a-div{display:flex;align-items:center;gap:10px;margin:14px 0}
-.a-div-l{flex:1;height:1px;background:var(--b2)}
-.a-div-t{font-size:10px;color:var(--tx3)}
-.a-sw{margin-top:14px;text-align:center;font-size:12px;color:var(--tx2)}
-.a-sw b{color:var(--gold);cursor:pointer;font-weight:600}
-.a-terms{font-size:10px;color:var(--tx3);text-align:center;margin-top:12px;line-height:1.5}
-
-/* ── OTP ── */
-.otp-tag{background:var(--sf2);border:1px solid var(--b2);border-radius:var(--rx);padding:10px 13px;font-size:13px;color:var(--tx);margin-bottom:13px;display:flex;align-items:center;justify-content:space-between}
-.otp-tag span{color:var(--gold);cursor:pointer;font-size:11px;font-weight:600}
-.sms-wrap{background:linear-gradient(135deg,rgba(34,197,94,.06),rgba(34,197,94,.02));border:1px solid rgba(34,197,94,.15);border-radius:var(--rs);padding:14px;margin-bottom:14px}
-.sms-hdr{display:flex;align-items:center;gap:8px;margin-bottom:9px}
-.sms-av{width:30px;height:30px;border-radius:50%;background:rgba(34,197,94,.15);display:flex;align-items:center;justify-content:center;color:var(--grn)}
-.sms-av svg{width:14px;height:14px}
-.sms-name{font-size:11px;font-weight:700;color:var(--grn)}
-.sms-time{font-size:10px;color:var(--tx3);margin-right:auto}
-.sms-msg{font-size:12px;color:var(--tx2);line-height:1.5}
-.sms-code{font-size:30px;font-weight:700;letter-spacing:10px;text-align:center;margin:10px 0 5px;direction:ltr;color:var(--tx)}
-.sms-note{font-size:10px;color:var(--tx3);text-align:center}
-.otp-boxes{display:flex;gap:8px;justify-content:center;margin-bottom:5px;direction:ltr}
-.otp-b{width:44px;height:52px;background:var(--sf2);border:1.5px solid var(--b2);border-radius:var(--rx);text-align:center;font-size:22px;font-weight:700;color:var(--tx);outline:none;caret-color:var(--gold);transition:border-color .2s}
-.otp-b:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,168,67,.1)}
-.otp-b.on{border-color:rgba(212,168,67,.4)}
-.otp-timer{text-align:center;font-size:11px;color:var(--tx3);margin-top:4px}
-.otp-timer b{color:var(--gold)}
-.otp-rsnd{text-align:center;font-size:12px;color:var(--gold);cursor:pointer;font-weight:600;margin-top:3px}
-.otp-rsnd.off{color:var(--tx3);pointer-events:none}
-
-/* ── Header ── */
-.bg-orb{position:fixed;top:-120px;right:-80px;width:400px;height:400px;background:radial-gradient(circle,rgba(212,168,67,.04) 0%,transparent 70%);pointer-events:none;z-index:0}
-.hdr{padding:calc(52px + var(--sat)) 18px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0}
-.hdr-title{font-size:24px;font-weight:700;letter-spacing:-.5px}
-.hdr-sub{font-size:11px;color:var(--tx2);margin-top:2px}
-.hdr-acts{display:flex;gap:7px;align-items:center}
-.hbtn{width:36px;height:36px;background:var(--sf2);border:1px solid var(--b1);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--tx2);flex-shrink:0;transition:all .2s;border:none}
-.hbtn:active{background:var(--sf3)}
-.hbtn svg{width:16px;height:16px}
-
-/* ── Summary ── */
-.sum-card{margin:0 14px 15px;background:linear-gradient(145deg,var(--sf2),#181828);border:1px solid var(--b2);border-radius:var(--r);padding:17px;position:relative;overflow:hidden;flex-shrink:0}
-.sum-card::before{content:'';position:absolute;top:-20px;left:-20px;width:100px;height:100px;background:radial-gradient(circle,rgba(212,168,67,.11) 0%,transparent 70%);pointer-events:none}
-.sum-lbl{font-size:10px;color:var(--tx2);margin-bottom:3px;font-weight:500}
-.sum-amt{font-size:32px;font-weight:700;letter-spacing:-1px}
-.sum-row{display:flex;justify-content:space-between;margin-top:13px}
-.sum-item{text-align:center}
-.sum-item-l{font-size:10px;color:var(--tx3);margin-bottom:2px}
-.sum-item-v{font-size:15px;font-weight:600}
-
-/* ── Tabs ── */
-.tabs{display:flex;margin:0 14px 11px;background:var(--sf2);border-radius:var(--rx);padding:3px;gap:3px;flex-shrink:0}
-.tab{flex:1;padding:8px;border-radius:7px;text-align:center;font-size:12px;font-weight:500;cursor:pointer;color:var(--tx2);transition:all .2s;border:none;background:transparent}
-.tab.on{background:var(--sf3);color:var(--tx);box-shadow:0 1px 4px rgba(0,0,0,.3)}
-
-/* ── Person cards ── */
-.sec-lbl{font-size:10px;color:var(--tx3);font-weight:700;letter-spacing:.6px;padding:0 18px;margin-bottom:7px}
-.plist{padding:0 10px;display:flex;flex-direction:column;gap:6px}
-.pcard{background:var(--sf);border:1px solid var(--b1);border-radius:var(--r);padding:13px 13px;display:flex;align-items:center;gap:11px;transition:all .2s;border:none;width:100%;text-align:right}
-.pcard:active{background:var(--sf2)}
-.av{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;flex-shrink:0;background:var(--sf3);border:1.5px solid var(--b2);color:var(--gold)}
-.pinfo{flex:1;min-width:0}
-.pname{font-size:14px;font-weight:600;color:var(--tx)}
-.pmeta{font-size:10px;color:var(--tx3);margin-top:2px}
-.pbal{text-align:left}
-.pbal-a{font-size:15px;font-weight:700}
-.pbal-l{font-size:10px;color:var(--tx3);margin-top:1px}
-.pos{color:var(--grn)}.neg{color:var(--red)}.neu{color:var(--tx2)}
-
-/* ── FAB ── */
-.fab{position:fixed;bottom:calc(26px + var(--sab));left:50%;transform:translateX(-50%);z-index:50;min-width:178px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#160f00;border:none;border-radius:100px;padding:13px 20px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 4px 22px var(--gglow);transition:all .2s}
-.fab:active{transform:translateX(-50%) scale(.97)}
-.fab svg{width:16px;height:16px}
-
-/* ── Sheet ── */
-.ov{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.78);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;animation:fi .2s}
-@keyframes fi{from{opacity:0}to{opacity:1}}
-.sht{width:100%;max-width:430px;background:var(--sf);border-radius:22px 22px 0 0;border:1px solid var(--b2);border-bottom:none;padding:16px 18px calc(28px + var(--sab));animation:su .3s cubic-bezier(.34,1.56,.64,1);max-height:93dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}
-@keyframes su{from{transform:translateY(100%)}to{transform:translateY(0)}}
-.sht-h{width:32px;height:4px;background:var(--sf3);border-radius:2px;margin:0 auto 16px}
-.sht-title{font-size:16px;font-weight:700;margin-bottom:15px;color:var(--tx);display:flex;align-items:center;justify-content:space-between}
-.sht-close{width:27px;height:27px;background:var(--sf2);border:1px solid var(--b1);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--tx2);flex-shrink:0;border:none}
-.sht-close svg{width:12px;height:12px}
-
-/* ── Form ── */
-.fg{margin-bottom:13px}
-.fg label{font-size:11px;color:var(--tx2);margin-bottom:5px;display:block;font-weight:600;letter-spacing:.3px}
-.fi{width:100%;background:var(--sf2);border:1px solid var(--b2);border-radius:var(--rx);padding:11px 12px;color:var(--tx);font-size:14px;outline:none;direction:rtl;transition:border-color .2s}
-.fi:focus{border-color:var(--gold)}
-.fi::placeholder{color:var(--tx3)}
-.t-sel{display:flex;gap:6px}
-.t-btn{flex:1;padding:11px;border-radius:var(--rx);border:1.5px solid var(--b1);background:var(--sf2);color:var(--tx2);font-size:12px;font-weight:600;cursor:pointer;text-align:center;transition:all .2s;-webkit-appearance:none}
-.t-btn.g.on{background:var(--gdim2);border-color:var(--grn);color:var(--grn)}
-.t-btn.r.on{background:var(--rdim);border-color:var(--red);color:var(--red)}
-
-/* ── Attach ── */
-.att-opts{display:flex;gap:6px}
-.att-opt{flex:1;padding:10px 5px;border-radius:var(--rx);border:1.5px dashed var(--b2);background:var(--sf2);color:var(--tx2);font-size:11px;font-weight:500;cursor:pointer;text-align:center;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:4px;-webkit-appearance:none}
-.att-opt:active{border-color:var(--gold);color:var(--gold);background:var(--gdim)}
-.att-opt svg{width:18px;height:18px}
-.att-prev{position:relative;border-radius:var(--rx);overflow:hidden;border:1.5px solid var(--b2)}
-.att-prev img{width:100%;max-height:140px;object-fit:cover;display:block}
-.att-pbar{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:7px;background:linear-gradient(to bottom,rgba(0,0,0,.55),transparent)}
-.att-pbtn{width:27px;height:27px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer}
-.att-pbtn.v{background:rgba(255,255,255,.15);color:#fff;backdrop-filter:blur(6px)}
-.att-pbtn.r{background:rgba(239,68,68,.85);color:#fff}
-.att-pbtn svg{width:12px;height:12px}
-.att-badge{position:absolute;bottom:6px;right:8px;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);color:#fff;font-size:9px;padding:2px 8px;border-radius:100px;display:flex;align-items:center;gap:3px}
-
-/* ── Buttons ── */
-.btn-g{width:100%;padding:13px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#160f00;border:none;border-radius:var(--rx);font-size:14px;font-weight:700;cursor:pointer;margin-top:5px;transition:opacity .2s;display:flex;align-items:center;justify-content:center;gap:6px}
-.btn-g:active{opacity:.85}
-.btn-g svg{width:15px;height:15px}
-.btn-d{width:100%;padding:12px;background:var(--rdim);color:var(--red);border:1px solid rgba(239,68,68,.22);border-radius:var(--rx);font-size:13px;font-weight:600;cursor:pointer;margin-top:5px;-webkit-appearance:none}
-
-/* ── TX cards ── */
-.txl{padding:0 10px;display:flex;flex-direction:column;gap:6px}
-.txc{background:var(--sf);border:1px solid var(--b1);border-radius:var(--r);overflow:hidden}
-.txm{padding:12px 13px;display:flex;align-items:center;gap:10px}
-.tx-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.tx-dot.g{background:var(--grn);box-shadow:0 0 6px rgba(34,197,94,.5)}
-.tx-dot.r{background:var(--red);box-shadow:0 0 6px rgba(239,68,68,.5)}
-.txi{flex:1}
-.tx-desc{font-size:13px;font-weight:500;color:var(--tx)}
-.tx-dt{font-size:10px;color:var(--tx3);margin-top:1px}
-.tx-due{font-size:10px;color:var(--gold);margin-top:1px}
-.tx-a{font-size:14px;font-weight:700}
-.tx-del{width:27px;height:27px;background:var(--rdim);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--red);flex-shrink:0}
-.tx-del svg{width:11px;height:11px}
-.tx-att{border-top:1px solid var(--b1);cursor:pointer;overflow:hidden;position:relative}
-.tx-att img{width:100%;max-height:110px;object-fit:cover;display:block;transition:transform .3s}
-.tx-att-badge{position:absolute;bottom:6px;right:8px;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);color:#fff;font-size:9px;padding:2px 8px;border-radius:100px;display:flex;align-items:center;gap:3px}
-.tx-att-badge svg{width:9px;height:9px}
-
-/* ── Lightbox ── */
-.lb{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.95);backdrop-filter:blur(10px);display:flex;flex-direction:column;align-items:center;justify-content:center;animation:fi .2s}
-.lb-img{max-width:96vw;max-height:82dvh;object-fit:contain;border-radius:12px}
-.lb-close{position:absolute;top:calc(20px + var(--sat));left:20px;width:38px;height:38px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;border:none}
-.lb-close svg{width:16px;height:16px}
-
-/* ── Detail balance ── */
-.dbal{margin:0 14px 16px;border-radius:var(--r);padding:16px;text-align:center}
-.dbal.pos{background:var(--gdim2);border:1px solid rgba(34,197,94,.2)}
-.dbal.neg{background:var(--rdim);border:1px solid rgba(239,68,68,.2)}
-.dbal.z{background:var(--sf2);border:1px solid var(--b1)}
-.dbal-l{font-size:11px;color:var(--tx2);margin-bottom:4px}
-.dbal-a{font-size:36px;font-weight:700;letter-spacing:-1px}
-
-/* ── Statements ── */
-.stc{background:var(--sf);border:1px solid var(--b1);border-radius:var(--r);margin:0 10px 7px;overflow:hidden}
-.st-hdr{padding:12px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border:none;background:transparent;width:100%;text-align:right}
-.st-title{font-size:13px;font-weight:600;color:var(--tx);display:flex;align-items:center;gap:6px}
-.st-title svg{width:13px;height:13px;color:var(--gold)}
-.st-badge{font-size:10px;padding:2px 8px;border-radius:100px;background:var(--gdim);color:var(--gold);font-weight:600}
-.st-body{padding:0 14px 12px;border-top:1px solid var(--b1)}
-.st-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--b1);font-size:12px}
-.st-row:last-child{border-bottom:none}
-.st-rn{color:var(--tx2)}
-.st-rv{font-weight:600}
-.exp-strip{display:flex;gap:6px;padding:10px 14px 0}
-.exp-btn{flex:1;padding:8px 5px;border-radius:8px;border:1px solid var(--b2);background:var(--sf2);color:var(--tx2);font-size:10px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:all .2s;-webkit-appearance:none}
-.exp-btn:active{border-color:var(--gold);color:var(--gold);background:var(--gdim)}
-.exp-btn svg{width:15px;height:15px}
-
-/* ── Notifs ── */
-.nc{background:var(--sf);border:1px solid var(--b1);border-radius:var(--r);margin:0 10px 6px;padding:12px 13px;display:flex;align-items:center;gap:10px}
-.ni{width:36px;height:36px;border-radius:50%;background:var(--gdim);border:1px solid rgba(212,168,67,.2);display:flex;align-items:center;justify-content:center;color:var(--gold);flex-shrink:0}
-.ni svg{width:15px;height:15px}
-.nt{font-size:12px;color:var(--tx);flex:1;line-height:1.5}
-.nd{background:none;border:none;color:var(--tx3);cursor:pointer;padding:4px}
-.nd svg{width:14px;height:14px}
-
-/* ── Misc ── */
-.empty{text-align:center;padding:52px 20px;color:var(--tx3)}
-.empty-i{font-size:36px;margin-bottom:9px}
-.empty-t{font-size:13px;line-height:1.6}
-.roll-banner{margin:0 10px 12px;background:linear-gradient(135deg,rgba(212,168,67,.09),rgba(212,168,67,.03));border:1px solid rgba(212,168,67,.17);border-radius:var(--r);padding:12px 13px;display:flex;align-items:center;justify-content:space-between;gap:9px}
-.roll-t{font-size:12px;color:var(--gold);flex:1;line-height:1.4}
-.roll-btn{background:var(--gold);color:#160f00;border:none;border-radius:7px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
-.chip{display:flex;align-items:center;gap:5px;background:var(--sf2);border:1px solid var(--b1);border-radius:100px;padding:3px 9px 3px 3px}
-.chip-av{width:24px;height:24px;border-radius:50%;background:var(--gdim);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--gold)}
-.chip-name{font-size:11px;color:var(--tx2);max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.loading{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--gold);font-size:13px;background:var(--bg)}
-.spin{width:30px;height:30px;border:2.5px solid var(--sf3);border-top-color:var(--gold);border-radius:50%;animation:rot .7s linear infinite}
-@keyframes rot{to{transform:rotate(360deg)}}
-`
+const CSS = ''  // moved to app.css
 
 // ── OTP Component ─────────────────────────────────────────────────────────────
 function OTPStep({ phone, onVerified, onBack }) {
@@ -548,7 +304,7 @@ function AuthScreen({ onLogin }) {
 
   return (
     <div className="app">
-      <style>{CSS}</style>
+      
       <div className="a-bg">
         <div className="orb orb1"/><div className="orb orb2"/>
         <div className="a-logo">💰</div>
@@ -612,6 +368,7 @@ function MainApp({ user, onLogout }) {
   const [data, setData]   = useState(null)
   const [scr, setScr]     = useState('home')
   const [selP, setSelP]   = useState(null)
+  const [shareP, setShareP] = useState(null)  // person to share
   const [tab, setTab]     = useState('friends')
   const [showAP, setAP]   = useState(false)
   const [showAT, setAT]   = useState(false)
@@ -625,6 +382,7 @@ function MainApp({ user, onLogout }) {
   const [txDue, setTDue]  = useState('')
   const [txAtt, setTAtt]  = useState(null)
   const fRef = useRef(null)
+  const restoreRef = useRef(null)
 
   useEffect(() => {
     kv('get', DK).then(d => setData(d || defaultData))
@@ -633,7 +391,7 @@ function MainApp({ user, onLogout }) {
 
   const persist = useCallback(d => { setData(d); kv('set', DK, d) }, [DK])
 
-  if (!data) return <div className="loading"><div className="spin"/></div>
+  if (!data) return <><div className="loading"><div className="spin"/></div></>
 
   const getBal   = id => data.transactions.filter(t=>t.friendId===id&&!t.archived).reduce((s,t)=>s+(t.type==='lent'?t.amount:-t.amount),0)
   const totPos   = data.friends.reduce((s,f)=>{ const b=getBal(f.id); return b>0?s+b:s },0)
@@ -681,6 +439,36 @@ function MainApp({ user, onLogout }) {
     const mk=monthKey(); const snap=data.friends.map(f=>({friendId:f.id,friendName:f.name,balance:getBal(f.id)}))
     persist({...data,transactions:data.transactions.map(t=>t.archived?t:{...t,archived:true}),statements:[...data.statements,{id:Date.now().toString(),monthKey:mk,label:monthLbl(),snapshot:snap,lockedAt:new Date().toISOString()}]})
   }
+
+  const backupData = () => {
+    const payload = { version: "1.0", exportedAt: new Date().toISOString(), data };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url;
+    a.download = `حساباتي_نسخة_احتياطية_${new Date().toLocaleDateString("ar-SA").replace(/\//g,"-")}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const restoreData = (e) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const payload = JSON.parse(ev.target.result);
+        const restored = payload.data || payload;
+        if (!restored.friends || !restored.transactions) { alert("ملف غير صالح"); return; }
+        if (window.confirm("سيتم استبدال بياناتك الحالية بالنسخة الاحتياطية. هل أنت متأكد؟")) {
+          persist(restored);
+          alert("✅ تم استعادة البيانات بنجاح!");
+        }
+      } catch { alert("تعذر قراءة الملف"); }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
   const logout = async () => { await kv('set',SESSION_KEY,null); onLogout() }
 
   const LB = () => lb ? (
@@ -692,7 +480,7 @@ function MainApp({ user, onLogout }) {
 
   // Statements screen
   if (scr==='statements') return (
-    <div className="app"><style>{CSS}</style><LB/>
+    <div className="app"><LB/>
       <div className="hdr" style={{paddingTop:`calc(52px + var(--sat))`}}>
         <div><div className="hdr-title">كشوفات الحسابات</div><div className="hdr-sub">الأرشيف الشهري المقفل</div></div>
         <button className="hbtn" onClick={()=>setScr('home')}><I.Back/></button>
@@ -736,16 +524,141 @@ function MainApp({ user, onLogout }) {
     </div>
   )
 
+
+  // Share person sheet
+  const SharePersonSheet = () => {
+    if (!shareP) return null
+    const { person, transactions, balance } = shareP
+
+    const buildText = () => {
+      const lines = [
+        `📊 كشف حساب - ${person.name}`,
+        `📅 ${new Date().toLocaleDateString('ar-SA',{day:'numeric',month:'long',year:'numeric'})}`,
+        '',
+        `💰 الرصيد الحالي: ${balance >= 0 ? '+' : ''}${balance.toFixed(2)} ر.س`,
+        `${balance > 0 ? '✅ له عندك' : balance < 0 ? '🔴 عليك له' : '⚖️ متعادل'}`,
+        '',
+        `📋 المعاملات (${transactions.length}):`,
+        ...transactions.map(t =>
+          `${t.type==='lent'?'💚':'❤️'} ${t.desc} — ${t.type==='lent'?'+':'-'}${t.amount.toFixed(2)} ر.س — ${new Date(t.date).toLocaleDateString('ar-SA',{day:'numeric',month:'short'})}`
+        ),
+        '',
+        '─────────────────',
+        '💰 تطبيق حساباتي',
+      ]
+      return lines.join('\n')
+    }
+
+    const exportPersonCSV = () => {
+      const BOM = '\uFEFF'
+      const rows = [
+        [`كشف حساب - ${person.name}`],
+        ['التاريخ', new Date().toLocaleDateString('ar-SA')],
+        ['الرصيد', `${balance.toFixed(2)} ر.س`],
+        [],
+        ['النوع','الوصف','المبلغ','التاريخ','موعد السداد'],
+        ...transactions.map(t => [
+          t.type==='lent'?'أعطيته':'أخذته منه',
+          t.desc,
+          `${t.type==='lent'?'+':'-'}${t.amount.toFixed(2)}`,
+          new Date(t.date).toLocaleDateString('ar-SA'),
+          t.dueDate ? new Date(t.dueDate).toLocaleDateString('ar-SA') : '',
+        ]),
+      ]
+      const csv = BOM + rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n')
+      const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'})
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href=url; a.download=`حساب_${person.name}.csv`; a.click()
+      URL.revokeObjectURL(url)
+    }
+
+    const exportPersonPDF = () => {
+      const rows = transactions.map(t=>`
+        <tr>
+          <td style="color:${t.type==='lent'?'#16a34a':'#dc2626'}">${t.type==='lent'?'💚 أعطيته':'❤️ أخذته'}</td>
+          <td>${t.desc}</td>
+          <td style="font-weight:700;color:${t.type==='lent'?'#16a34a':'#dc2626'}">${t.type==='lent'?'+':'-'}${t.amount.toFixed(2)} ر.س</td>
+          <td style="color:#888">${new Date(t.date).toLocaleDateString('ar-SA',{day:'numeric',month:'short',year:'numeric'})}</td>
+          <td style="color:#b8860b">${t.dueDate?new Date(t.dueDate).toLocaleDateString('ar-SA',{day:'numeric',month:'short'}):'-'}</td>
+        </tr>`).join('')
+      const html = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>كشف حساب ${person.name}</title>
+<style>@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:'IBM Plex Sans Arabic',Arial,sans-serif;background:#fff;color:#111;padding:28px;direction:rtl}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #d4a843}
+.logo{font-size:20px;font-weight:700}.name{font-size:26px;font-weight:700;color:#d4a843;margin-top:3px}
+.meta{text-align:left;font-size:11px;color:#666;line-height:1.7}
+.bal{border-radius:10px;padding:14px 18px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;background:${balance>=0?'#f0fdf4':'#fef2f2'};border:1px solid ${balance>=0?'#bbf7d0':'#fecaca'}}
+.bal-l{font-size:12px;color:#666}.bal-v{font-size:26px;font-weight:700;color:${balance>=0?'#16a34a':'#dc2626'}}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#1a1a2e;color:#fff;padding:9px 11px;text-align:right;font-weight:600;font-size:11px}
+td{padding:8px 11px;border-bottom:1px solid #eee}tr:nth-child(even) td{background:#fafafa}
+.footer{margin-top:18px;padding-top:10px;border-top:1px solid #eee;font-size:10px;color:#999;display:flex;justify-content:space-between}
+@media print{body{padding:16px}}</style></head><body>
+<div class="hdr"><div><div class="logo">💰 حساباتي</div><div class="name">${person.name}</div></div>
+<div class="meta"><div>صادر لـ: ${user.name}</div><div>${new Date().toLocaleDateString('ar-SA')}</div></div></div>
+<div class="bal"><div><div class="bal-l">${balance>=0?'له عندك':'عليك له'}</div><div class="bal-v">${balance>=0?'+':'-'}${Math.abs(balance).toFixed(2)} ر.س</div></div>
+<div style="font-size:11px;color:#888">${transactions.length} معاملة</div></div>
+<table><thead><tr><th>النوع</th><th>الوصف</th><th>المبلغ</th><th>التاريخ</th><th>موعد السداد</th></tr></thead>
+<tbody>${rows}</tbody></table>
+<div class="footer"><span>تطبيق حساباتي</span><span>${new Date().toLocaleDateString('ar-SA')}</span></div>
+<script>window.onload=()=>window.print()<\/script></body></html>`
+      const w = window.open('','_blank','width=800,height=600')
+      if(w){w.document.write(html);w.document.close()}
+    }
+
+    const actions = [
+      { emoji:'💬', color:'#25D366', label:'واتساب', action:()=>{
+          window.open(`https://wa.me/?text=${encodeURIComponent(buildText())}`, '_blank')
+      }},
+      { emoji:'📋', color:'var(--gold)', label:'نسخ النص', action:async()=>{
+          try { await navigator.clipboard.writeText(buildText()) } catch {}
+          alert('✅ تم نسخ الكشف')
+      }},
+      { emoji:'📊', color:'#16a34a', label:'Excel', action: exportPersonCSV },
+      { emoji:'🖨️', color:'#ef4444', label:'طباعة PDF', action: exportPersonPDF },
+    ]
+
+    return (
+      <div className="ov" onClick={()=>setShareP(null)}>
+        <div className="sht" onClick={e=>e.stopPropagation()}>
+          <div className="sht-h"/>
+          <div className="sht-title">
+            مشاركة حساب {person.name}
+            <button className="sht-close" onClick={()=>setShareP(null)}><I.X/></button>
+          </div>
+          <div style={{fontSize:12,color:'var(--tx3)',marginBottom:16}}>اختر صيغة المشاركة</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:16}}>
+            {actions.map((a,i)=>(
+              <button key={i} onClick={()=>{a.action();setShareP(null)}}
+                style={{display:'flex',flexDirection:'column',alignItems:'center',gap:8,padding:'14px 6px',
+                  borderRadius:12,border:'1px solid var(--b2)',background:'var(--sf2)',cursor:'pointer',transition:'all .2s'}}
+                onMouseOver={e=>e.currentTarget.style.borderColor=a.color}
+                onMouseOut={e=>e.currentTarget.style.borderColor='var(--b2)'}>
+                <div style={{width:44,height:44,borderRadius:12,background:'var(--sf3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>{a.emoji}</div>
+                <span style={{fontSize:10,color:'var(--tx2)',fontWeight:600,textAlign:'center'}}>{a.label}</span>
+              </button>
+            ))}
+          </div>
+          <button className="btn-d" style={{marginTop:0}} onClick={()=>setShareP(null)}>إلغاء</button>
+        </div>
+      </div>
+    )
+  }
+
   // Person detail screen
   if (scr==='friend' && selP) {
     const bal = getBal(selP.id)
     const ptx = data.transactions.filter(t=>t.friendId===selP.id&&!t.archived)
     const bc  = bal>0?'pos':bal<0?'neg':'z'
     return (
-      <div className="app"><style>{CSS}</style><LB/>
+      <div className="app"><LB/><SharePersonSheet/>
         <div className="hdr">
           <div><div className="hdr-title">{selP.name}</div><div className="hdr-sub">{ptx.length} معاملة نشطة</div></div>
-          <button className="hbtn" onClick={()=>setScr('home')}><I.Back/></button>
+          <div style={{display:'flex',gap:7}}>
+            <button className="hbtn" onClick={()=>setShareP({person:selP,transactions:ptx,balance:bal})} title="مشاركة"><I.Share/></button>
+            <button className="hbtn" onClick={()=>setScr('home')}><I.Back/></button>
+          </div>
         </div>
         <div className="scr pb">
           <div className={`dbal ${bc}`}>
@@ -818,7 +731,7 @@ function MainApp({ user, onLogout }) {
   // Home screen
   const unread = data.notifications.filter(n=>!n.read).length
   return (
-    <div className="app"><style>{CSS}</style><LB/>
+    <div className="app"><LB/>
       <div className="bg-orb"/>
       <div className="hdr">
         <div><div className="hdr-title">حساباتي 💰</div><div className="hdr-sub">{monthLbl()}</div></div>
@@ -905,6 +818,26 @@ function MainApp({ user, onLogout }) {
   )
 }
 
+
+// ── Error Boundary ────────────────────────────────────────────────────────────
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null } }
+  static getDerivedStateFromError(e) { return { error: e } }
+  render() {
+    if (this.state.error) return (
+      <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'#080810',color:'#eeeef8',padding:24,direction:'rtl',textAlign:'center',gap:16}}>
+        <div style={{fontSize:40}}>⚠️</div>
+        <div style={{fontSize:18,fontWeight:700}}>حدث خطأ في التطبيق</div>
+        <div style={{fontSize:12,color:'#8080a0',maxWidth:300}}>{String(this.state.error)}</div>
+        <button onClick={()=>window.location.reload()} style={{marginTop:12,padding:'12px 24px',background:'#d4a843',color:'#160f00',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer'}}>
+          إعادة تحميل التطبيق
+        </button>
+      </div>
+    )
+    return this.props.children
+  }
+}
+
 // ── Root ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const [state, setState] = useState('loading')
@@ -917,7 +850,7 @@ export default function App() {
     })
   }, [])
 
-  if (state==='loading') return <div className="loading"><div className="spin"/></div>
-  if (state==='auth')    return <AuthScreen onLogin={u=>{setUser(u);setState('app')}}/>
-  return <MainApp user={user} onLogout={()=>{setUser(null);setState('auth')}}/>
+  if (state==='loading') return <><div className="loading"><div className="spin"/></div></>
+  if (state==='auth')    return <ErrorBoundary><AuthScreen onLogin={u=>{setUser(u);setState('app')}}/></ErrorBoundary>
+  return <ErrorBoundary><MainApp user={user} onLogout={()=>{setUser(null);setState('auth')}}/></ErrorBoundary>
 }
