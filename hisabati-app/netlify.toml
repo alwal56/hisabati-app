@@ -1,0 +1,4 @@
+[build]
+  base = "hisabati-app"
+  command = "npm run build"
+  publish = "dist"
