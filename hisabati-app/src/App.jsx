@@ -137,6 +137,7 @@ const I = {
   Share:      ()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
   XlIcon:     ()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>,
   Sms:        ()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+  Unlock:     ()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>,
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -615,8 +616,34 @@ function MainApp({ user, onLogout }) {
   const delTx    = async id => { const n=data.notifications.find(n=>n.txId===id); if(n) await cancelNotification(n.id); persist({...data,transactions:data.transactions.filter(t=>t.id!==id),notifications:data.notifications.filter(n=>n.txId!==id)}) }
   const delNotif = id => persist({...data,notifications:data.notifications.filter(n=>n.id!==id)})
   const doRoll   = () => {
-    const mk=monthKey(); const snap=data.friends.map(f=>({friendId:f.id,friendName:f.name,balance:getBal(f.id)}))
-    persist({...data,transactions:data.transactions.map(t=>t.archived?t:{...t,archived:true}),statements:[...data.statements,{id:Date.now().toString(),monthKey:mk,label:monthLbl(),snapshot:snap,lockedAt:new Date().toISOString()}]})
+    const mk=monthKey(); const stmtId=Date.now().toString()
+    const snap=data.friends.map(f=>({friendId:f.id,friendName:f.name,balance:getBal(f.id)}))
+    persist({...data,
+      transactions:data.transactions.map(t=>t.archived?t:{...t,archived:true,statementId:stmtId}),
+      statements:[...data.statements,{id:stmtId,monthKey:mk,label:monthLbl(),snapshot:snap,lockedAt:new Date().toISOString()}]
+    })
+  }
+
+  const restoreStmt = (stmt) => {
+    if (!window.confirm(`هل تريد فتح كشف "${stmt.label}" وإضافة معاملاته للشهر الحالي؟`)) return
+    // Find transactions by statementId; fallback to date-range for old data
+    const hasTags = data.transactions.some(t => t.statementId === stmt.id)
+    let txIds
+    if (hasTags) {
+      txIds = new Set(data.transactions.filter(t => t.statementId === stmt.id).map(t => t.id))
+    } else {
+      const sorted = [...data.statements].sort((a,b) => new Date(a.lockedAt)-new Date(b.lockedAt))
+      const idx    = sorted.findIndex(s => s.id === stmt.id)
+      const from   = idx > 0 ? new Date(sorted[idx-1].lockedAt) : new Date(0)
+      const to     = new Date(stmt.lockedAt)
+      txIds = new Set(data.transactions.filter(t => t.archived && new Date(t.date) >= from && new Date(t.date) <= to).map(t => t.id))
+    }
+    persist({
+      ...data,
+      transactions: data.transactions.map(t => txIds.has(t.id) ? {...t, archived:false, statementId:undefined} : t),
+      statements:   data.statements.filter(s => s.id !== stmt.id)
+    })
+    setES(null); setScr('home')
   }
 
   const backupData = () => {
@@ -694,6 +721,11 @@ function MainApp({ user, onLogout }) {
                       nativeShare({title:'كشف حساب حساباتي',text:lines.join('\n')})
                     }}><I.Share/>مشاركة</button>
                   </div>
+                  <button onClick={()=>restoreStmt(s)} style={{width:'100%',marginTop:10,padding:'10px 0',background:'var(--sf2)',border:'1px solid rgba(212,168,67,.35)',borderRadius:'var(--rx)',fontSize:12,fontWeight:600,color:'var(--gold)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6,transition:'all .2s'}}
+                    onMouseOver={e=>e.currentTarget.style.background='rgba(212,168,67,.12)'}
+                    onMouseOut={e=>e.currentTarget.style.background='var(--sf2)'}>
+                    <I.Unlock/>فتح الكشف وإضافته للشهر الحالي
+                  </button>
                 </div>
               )}
             </div>
