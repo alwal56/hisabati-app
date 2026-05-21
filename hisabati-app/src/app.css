@@ -92,10 +92,10 @@ button{cursor:pointer}
 .hdr{padding:calc(52px + var(--sat)) 18px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0}
 .hdr-title{font-size:24px;font-weight:700;letter-spacing:-.5px}
 .hdr-sub{font-size:11px;color:var(--tx2);margin-top:2px}
-.hdr-acts{display:flex;gap:7px;align-items:center}
-.hbtn{width:36px;height:36px;background:var(--sf2);border:1px solid var(--b1);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--tx2);flex-shrink:0;transition:all .2s;border:none}
-.hbtn:active{background:var(--sf3)}
-.hbtn svg{width:16px;height:16px}
+.hdr-acts{display:flex;gap:8px;align-items:center}
+.hbtn{width:42px;height:42px;background:var(--sf2);border:1px solid var(--b1);border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--tx2);flex-shrink:0;transition:all .18s}
+.hbtn:active{background:var(--sf3);transform:scale(.91)}
+.hbtn svg{width:20px;height:20px}
 
 /* ── Summary ── */
 .sum-card{margin:0 14px 15px;background:linear-gradient(145deg,var(--sf2),#181828);border:1px solid var(--b2);border-radius:var(--r);padding:17px;position:relative;overflow:hidden;flex-shrink:0}
@@ -242,3 +242,4 @@ button{cursor:pointer}
 .loading{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--gold);font-size:13px;background:var(--bg)}
 .spin{width:30px;height:30px;border:2.5px solid var(--sf3);border-top-color:var(--gold);border-radius:50%;animation:rot .7s linear infinite}
 @keyframes rot{to{transform:rotate(360deg)}}
+@keyframes slideUpSheet{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}

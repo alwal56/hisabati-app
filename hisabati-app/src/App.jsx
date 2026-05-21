@@ -5,11 +5,12 @@ import { requestNotifPermission, schedulePaymentReminder, cancelNotification } f
 import { nativeShare } from './share.js'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const USERS_KEY   = 'hisabati_users'
-const SESSION_KEY = 'hisabati_session'
-const DATA_PREFIX = 'hisabati_data_'
-const OTP_KEY     = 'hisabati_otp'
-const defaultData = { friends: [], transactions: [], statements: [], notifications: [] }
+const USERS_KEY    = 'hisabati_users'
+const SESSION_KEY  = 'hisabati_session'
+const DATA_PREFIX  = 'hisabati_data_'
+const OTP_KEY      = 'hisabati_otp'
+const INSTALL_KEY  = 'hisabati_install_dismissed'
+const defaultData  = { friends: [], transactions: [], statements: [], notifications: [] }
 
 // ─── Crypto ───────────────────────────────────────────────────────────────────
 async function hashPwd(pwd) {
@@ -138,6 +139,7 @@ const I = {
   XlIcon:     ()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>,
   Sms:        ()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
   Unlock:     ()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>,
+  SendApp:    ()=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>,
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -403,6 +405,74 @@ function ForgotPasswordFlow({ onBack, onDone }) {
   </>)
 }
 
+// ── Install Banner ────────────────────────────────────────────────────────────
+function InstallBanner() {
+  const [show, setShow] = useState(false)
+  const [dp,   setDp]   = useState(null)
+  const [ios,  setIos]  = useState(false)
+
+  useEffect(() => {
+    if (window.matchMedia('(display-mode:standalone)').matches || window.navigator.standalone) return
+    const ts = localStorage.getItem(INSTALL_KEY)
+    if (ts && Date.now() - Number(ts) < 3 * 864e5) return
+
+    const iosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream
+    setIos(iosDevice)
+
+    if (iosDevice) {
+      setShow(true)
+    } else {
+      const handler = e => { e.preventDefault(); setDp(e); setShow(true) }
+      window.addEventListener('beforeinstallprompt', handler)
+      return () => window.removeEventListener('beforeinstallprompt', handler)
+    }
+  }, [])
+
+  const dismiss = () => { localStorage.setItem(INSTALL_KEY, Date.now().toString()); setShow(false) }
+
+  const install = async () => {
+    if (dp) {
+      dp.prompt()
+      const { outcome } = await dp.userChoice
+      localStorage.setItem(INSTALL_KEY, outcome === 'accepted' ? '9999999999999' : Date.now().toString())
+      setDp(null)
+    }
+    setShow(false)
+  }
+
+  if (!show) return null
+
+  return (
+    <div style={{
+      position:'fixed', bottom:0, left:0, right:0, zIndex:99997,
+      background:'linear-gradient(to top,#0f0f1e,#1a1a2e)',
+      borderTop:'2px solid rgba(212,168,67,.45)',
+      padding:'18px 18px 28px', direction:'rtl',
+      boxShadow:'0 -10px 40px rgba(0,0,0,.6)',
+      animation:'slideUpSheet .32s ease'
+    }}>
+      <div style={{display:'flex',alignItems:'center',gap:13,marginBottom:15}}>
+        <div style={{width:54,height:54,borderRadius:16,background:'rgba(212,168,67,.1)',border:'1px solid rgba(212,168,67,.3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,flexShrink:0}}>💰</div>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:700,fontSize:15,color:'#f0e6c8',lineHeight:1.3}}>أضف حساباتي للشاشة الرئيسية</div>
+          <div style={{fontSize:11,color:'#8080a0',marginTop:3}}>وصول فوري · يعمل بدون إنترنت</div>
+        </div>
+        <button onClick={dismiss} style={{background:'none',border:'none',color:'#8080a0',fontSize:20,cursor:'pointer',width:34,height:34,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,borderRadius:8}}>✕</button>
+      </div>
+      {ios ? (
+        <div style={{background:'rgba(212,168,67,.07)',borderRadius:12,padding:'12px 15px',fontSize:12,color:'#b0b0c8',lineHeight:1.9,display:'flex',alignItems:'center',gap:11}}>
+          <span style={{fontSize:22,flexShrink:0}}>📤</span>
+          <span>اضغط <strong style={{color:'#d4a843'}}>زر المشاركة</strong> في أسفل المتصفح، ثم اختر <strong style={{color:'#d4a843'}}>«إضافة للشاشة الرئيسية»</strong></span>
+        </div>
+      ) : (
+        <button onClick={install} style={{width:'100%',padding:'14px',background:'linear-gradient(135deg,#d4a843,#e8c06a)',color:'#080810',border:'none',borderRadius:13,fontSize:14,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          📲 تثبيت التطبيق
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ── Auth Screen ───────────────────────────────────────────────────────────────
 function AuthScreen({ onLogin }) {
   const [mode, setMode]     = useState('login')
@@ -659,6 +729,16 @@ function MainApp({ user, onLogout }) {
 
   const cancelLongPress = () => {
     if (pressTimerRef.current) { clearTimeout(pressTimerRef.current); pressTimerRef.current = null }
+  }
+
+  const shareApp = async () => {
+    const url = window.location.origin + (import.meta.env.BASE_URL || '/')
+    if (navigator.share) {
+      try { await navigator.share({ title: 'حساباتي 💰', text: 'تطبيق لتتبع الحسابات بين الأصدقاء — جرّبه!', url }) } catch {}
+    } else {
+      try { await navigator.clipboard.writeText(url) } catch {}
+      alert('✅ تم نسخ رابط التطبيق')
+    }
   }
 
   const backupData = () => {
@@ -986,8 +1066,9 @@ td{padding:8px 11px;border-bottom:1px solid #eee}tr:nth-child(even) td{backgroun
         <div><div className="hdr-title">حساباتي 💰</div><div className="hdr-sub">{monthLbl()}</div></div>
         <div className="hdr-acts">
           <div className="chip"><div className="chip-av">{user.name?.charAt(0)||'؟'}</div><span className="chip-name">{user.name}</span></div>
-          <button className="hbtn" onClick={()=>setScr('statements')}><I.FileText/></button>
-          <button className="hbtn" onClick={logout}><I.LogOut/></button>
+          <button className="hbtn" onClick={shareApp} title="مشاركة التطبيق"><I.SendApp/></button>
+          <button className="hbtn" onClick={()=>setScr('statements')} title="الكشوفات"><I.FileText/></button>
+          <button className="hbtn" onClick={logout} title="تسجيل الخروج"><I.LogOut/></button>
         </div>
       </div>
 
@@ -1100,6 +1181,11 @@ export default function App() {
   }, [])
 
   if (state==='loading') return <><div className="loading"><div className="spin"/></div></>
-  if (state==='auth')    return <ErrorBoundary><AuthScreen onLogin={u=>{setUser(u);setState('app')}}/></ErrorBoundary>
-  return <ErrorBoundary><MainApp user={user} onLogout={()=>{setUser(null);setState('auth')}}/></ErrorBoundary>
+  return <>
+    <InstallBanner/>
+    {state==='auth'
+      ? <ErrorBoundary><AuthScreen onLogin={u=>{setUser(u);setState('app')}}/></ErrorBoundary>
+      : <ErrorBoundary><MainApp user={user} onLogout={()=>{setUser(null);setState('auth')}}/></ErrorBoundary>
+    }
+  </>
 }
