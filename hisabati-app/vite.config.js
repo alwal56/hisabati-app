@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['icons/*.png', '*.svg'],
       manifest: {
         name: 'حساباتي',
@@ -38,7 +38,6 @@ export default defineConfig({
         ]
       },
       workbox: {
-        skipWaiting: true,
         clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
