@@ -2,17 +2,21 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 
-// PWA update notification banner
+// PWA update notification — fires when new SW takes control
 if ('serviceWorker' in navigator) {
   let refreshing = false
 
-  // When new SW takes control, reload the page
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!refreshing) { refreshing = true; window.location.reload() }
-  })
-
-  const showUpdateBanner = (worker) => {
+  const showUpdateBanner = () => {
     if (document.getElementById('__pwa_update_banner__')) return
+
+    const style = document.createElement('style')
+    style.textContent = `
+      @keyframes __pwa_slide_up__ {
+        from { opacity:0; transform:translateX(-50%) translateY(20px); }
+        to   { opacity:1; transform:translateX(-50%) translateY(0); }
+      }
+    `
+    document.head.appendChild(style)
 
     const banner = document.createElement('div')
     banner.id = '__pwa_update_banner__'
@@ -24,15 +28,6 @@ if ('serviceWorker' in navigator) {
       'gap:14px', 'direction:rtl', 'font-family:inherit', 'color:#f0e6c8',
       'animation:__pwa_slide_up__ .35s ease'
     ].join(';')
-
-    const style = document.createElement('style')
-    style.textContent = `
-      @keyframes __pwa_slide_up__ {
-        from { opacity:0; transform:translateX(-50%) translateY(20px); }
-        to   { opacity:1; transform:translateX(-50%) translateY(0); }
-      }
-    `
-    document.head.appendChild(style)
 
     let seconds = 10
     const text = document.createElement('span')
@@ -47,38 +42,25 @@ if ('serviceWorker' in navigator) {
       'white-space:nowrap', 'flex-shrink:0'
     ].join(';')
 
-    const applyUpdate = () => {
-      clearInterval(timer)
-      worker.postMessage({ type: 'SKIP_WAITING' })
-    }
-
-    btn.addEventListener('click', applyUpdate)
+    const doReload = () => { clearInterval(timer); window.location.reload() }
+    btn.addEventListener('click', doReload)
     banner.appendChild(text)
     banner.appendChild(btn)
     document.body.appendChild(banner)
 
-    const countdownEl = () => document.getElementById('__pwa_countdown__')
-
     const timer = setInterval(() => {
       seconds--
-      const el = countdownEl()
+      const el = document.getElementById('__pwa_countdown__')
       if (el) el.textContent = `سيتم التحديث تلقائياً خلال ${seconds} ث`
-      if (seconds <= 0) applyUpdate()
+      if (seconds <= 0) doReload()
     }, 1000)
   }
 
-  navigator.serviceWorker.ready.then(reg => {
-    // Check if there's already a waiting SW right now
-    if (reg.waiting) { showUpdateBanner(reg.waiting); return }
-
-    reg.addEventListener('updatefound', () => {
-      const newWorker = reg.installing
-      newWorker.addEventListener('statechange', () => {
-        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-          showUpdateBanner(newWorker)
-        }
-      })
-    })
+  // controllerchange fires when the new SW takes control (after skipWaiting)
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return
+    refreshing = true
+    showUpdateBanner()
   })
 }
 
