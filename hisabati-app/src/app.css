@@ -243,3 +243,4 @@ button{cursor:pointer}
 .spin{width:30px;height:30px;border:2.5px solid var(--sf3);border-top-color:var(--gold);border-radius:50%;animation:rot .7s linear infinite}
 @keyframes rot{to{transform:rotate(360deg)}}
 @keyframes slideUpSheet{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes bnc{0%,100%{transform:translateY(0)}50%{transform:translateY(10px)}}

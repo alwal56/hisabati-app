@@ -415,10 +415,8 @@ function InstallBanner() {
     if (window.matchMedia('(display-mode:standalone)').matches || window.navigator.standalone) return
     const ts = localStorage.getItem(INSTALL_KEY)
     if (ts && Date.now() - Number(ts) < 3 * 864e5) return
-
     const iosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream
     setIos(iosDevice)
-
     if (iosDevice) {
       setShow(true)
     } else {
@@ -442,15 +440,41 @@ function InstallBanner() {
 
   if (!show) return null
 
+  /* ── iOS: full-screen install guide ── */
+  if (ios) return (
+    <div style={{position:'fixed',inset:0,zIndex:99997,background:'#080810',display:'flex',flexDirection:'column',alignItems:'center',padding:'52px 24px 36px',direction:'rtl',overflowY:'auto'}}>
+      <div style={{width:90,height:90,borderRadius:24,background:'linear-gradient(145deg,#1a1a2e,#252540)',border:'2px solid rgba(212,168,67,.35)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:44,marginBottom:16,boxShadow:'0 12px 40px rgba(212,168,67,.15)'}}>💰</div>
+      <div style={{fontSize:25,fontWeight:700,color:'#f0e6c8',marginBottom:5}}>حساباتي</div>
+      <div style={{fontSize:13,color:'#8080a0',marginBottom:36,textAlign:'center',lineHeight:1.6}}>تطبيق تتبع الحسابات بين الأصدقاء<br/>أضفه للشاشة الرئيسية للوصول السريع</div>
+
+      <div style={{width:'100%',maxWidth:340,display:'flex',flexDirection:'column',gap:11,marginBottom:36}}>
+        {[
+          {ico:'📤', t:'اضغط زر المشاركة', s:'الزر في شريط أدوات Safari بالأسفل'},
+          {ico:'🏠', t:'اختر «إضافة للشاشة الرئيسية»', s:'من قائمة خيارات المشاركة'},
+          {ico:'✅', t:'اضغط «إضافة»', s:'تظهر أيقونة التطبيق على شاشتك فوراً'},
+        ].map((step,i) => (
+          <div key={i} style={{display:'flex',alignItems:'center',gap:13,background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.07)',borderRadius:14,padding:'13px 15px'}}>
+            <div style={{width:44,height:44,borderRadius:12,background:'rgba(212,168,67,.1)',border:'1px solid rgba(212,168,67,.2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:21,flexShrink:0}}>{step.ico}</div>
+            <div>
+              <div style={{fontSize:13,fontWeight:600,color:'#e8e0c8'}}>{step.t}</div>
+              <div style={{fontSize:11,color:'#6060a0',marginTop:3}}>{step.s}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{fontSize:30,animation:'bnc .9s ease-in-out infinite',marginBottom:8}}>⬇️</div>
+      <div style={{fontSize:11,color:'#50508a',marginBottom:32,textAlign:'center'}}>زر المشاركة في شريط Safari بالأسفل</div>
+
+      <button onClick={dismiss} style={{fontSize:12,color:'#606080',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.09)',borderRadius:10,cursor:'pointer',padding:'11px 28px'}}>
+        متابعة في المتصفح بدلاً من ذلك
+      </button>
+    </div>
+  )
+
+  /* ── Android: bottom banner ── */
   return (
-    <div style={{
-      position:'fixed', bottom:0, left:0, right:0, zIndex:99997,
-      background:'linear-gradient(to top,#0f0f1e,#1a1a2e)',
-      borderTop:'2px solid rgba(212,168,67,.45)',
-      padding:'18px 18px 28px', direction:'rtl',
-      boxShadow:'0 -10px 40px rgba(0,0,0,.6)',
-      animation:'slideUpSheet .32s ease'
-    }}>
+    <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:99997,background:'linear-gradient(to top,#0f0f1e,#1a1a2e)',borderTop:'2px solid rgba(212,168,67,.45)',padding:'18px 18px 28px',direction:'rtl',boxShadow:'0 -10px 40px rgba(0,0,0,.6)',animation:'slideUpSheet .32s ease'}}>
       <div style={{display:'flex',alignItems:'center',gap:13,marginBottom:15}}>
         <div style={{width:54,height:54,borderRadius:16,background:'rgba(212,168,67,.1)',border:'1px solid rgba(212,168,67,.3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,flexShrink:0}}>💰</div>
         <div style={{flex:1}}>
@@ -459,16 +483,9 @@ function InstallBanner() {
         </div>
         <button onClick={dismiss} style={{background:'none',border:'none',color:'#8080a0',fontSize:20,cursor:'pointer',width:34,height:34,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,borderRadius:8}}>✕</button>
       </div>
-      {ios ? (
-        <div style={{background:'rgba(212,168,67,.07)',borderRadius:12,padding:'12px 15px',fontSize:12,color:'#b0b0c8',lineHeight:1.9,display:'flex',alignItems:'center',gap:11}}>
-          <span style={{fontSize:22,flexShrink:0}}>📤</span>
-          <span>اضغط <strong style={{color:'#d4a843'}}>زر المشاركة</strong> في أسفل المتصفح، ثم اختر <strong style={{color:'#d4a843'}}>«إضافة للشاشة الرئيسية»</strong></span>
-        </div>
-      ) : (
-        <button onClick={install} style={{width:'100%',padding:'14px',background:'linear-gradient(135deg,#d4a843,#e8c06a)',color:'#080810',border:'none',borderRadius:13,fontSize:14,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-          📲 تثبيت التطبيق
-        </button>
-      )}
+      <button onClick={install} style={{width:'100%',padding:'14px',background:'linear-gradient(135deg,#d4a843,#e8c06a)',color:'#080810',border:'none',borderRadius:13,fontSize:14,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+        📲 تثبيت التطبيق
+      </button>
     </div>
   )
 }
@@ -732,12 +749,13 @@ function MainApp({ user, onLogout }) {
   }
 
   const shareApp = async () => {
-    const url = window.location.origin + (import.meta.env.BASE_URL || '/')
+    const base = (window.location.origin + (import.meta.env.BASE_URL || '/')).replace(/\/$/, '')
+    const url  = base + '/?invite=1'
     if (navigator.share) {
-      try { await navigator.share({ title: 'حساباتي 💰', text: 'تطبيق لتتبع الحسابات بين الأصدقاء — جرّبه!', url }) } catch {}
+      try { await navigator.share({ title: 'حساباتي 💰', text: 'انضم وتابع حساباتنا معاً على تطبيق حساباتي!', url }) } catch {}
     } else {
       try { await navigator.clipboard.writeText(url) } catch {}
-      alert('✅ تم نسخ رابط التطبيق')
+      alert('✅ تم نسخ رابط الدعوة')
     }
   }
 
@@ -1174,8 +1192,11 @@ export default function App() {
   const [user,  setUser]  = useState(null)
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const invite = params.get('invite') === '1'
+    if (invite) window.history.replaceState({}, '', window.location.pathname)
     kv('get', SESSION_KEY).then(s => {
-      if (s?.id) { setUser(s); setState('app') }
+      if (s?.id && !invite) { setUser(s); setState('app') }
       else setState('auth')
     })
   }, [])
