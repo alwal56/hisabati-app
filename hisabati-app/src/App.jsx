@@ -561,8 +561,11 @@ function MainApp({ user, onLogout }) {
   const [txDate, setTDt]  = useState(todayISO())
   const [txDue, setTDue]  = useState('')
   const [txAtt, setTAtt]  = useState(null)
+  const [restoreTarget, setRestoreTarget] = useState(null)
   const fRef = useRef(null)
   const restoreRef = useRef(null)
+  const pressTimerRef  = useRef(null)
+  const pressWasLong   = useRef(false)
 
   useEffect(() => {
     kv('get', DK).then(d => setData(d || defaultData))
@@ -625,8 +628,6 @@ function MainApp({ user, onLogout }) {
   }
 
   const restoreStmt = (stmt) => {
-    if (!window.confirm(`هل تريد فتح كشف "${stmt.label}" وإضافة معاملاته للشهر الحالي؟`)) return
-    // Find transactions by statementId; fallback to date-range for old data
     const hasTags = data.transactions.some(t => t.statementId === stmt.id)
     let txIds
     if (hasTags) {
@@ -641,9 +642,23 @@ function MainApp({ user, onLogout }) {
     persist({
       ...data,
       transactions: data.transactions.map(t => txIds.has(t.id) ? {...t, archived:false, statementId:undefined} : t),
-      statements:   data.statements.filter(s => s.id !== stmt.id)
+      statements:   data.statements.map(s => s.id === stmt.id ? {...s, restored:true, restoredAt:new Date().toISOString()} : s)
     })
-    setES(null); setScr('home')
+    setRestoreTarget(null); setES(null); setScr('home')
+  }
+
+  const startLongPress = (stmt) => {
+    if (stmt.restored) return
+    pressWasLong.current = false
+    pressTimerRef.current = setTimeout(() => {
+      pressWasLong.current = true
+      if (navigator.vibrate) navigator.vibrate(50)
+      setRestoreTarget(stmt)
+    }, 700)
+  }
+
+  const cancelLongPress = () => {
+    if (pressTimerRef.current) { clearTimeout(pressTimerRef.current); pressTimerRef.current = null }
   }
 
   const backupData = () => {
@@ -688,7 +703,7 @@ function MainApp({ user, onLogout }) {
   if (scr==='statements') return (
     <div className="app"><LB/>
       <div className="hdr" style={{paddingTop:`calc(52px + var(--sat))`}}>
-        <div><div className="hdr-title">كشوفات الحسابات</div><div className="hdr-sub">الأرشيف الشهري المقفل</div></div>
+        <div><div className="hdr-title">كشوفات الحسابات</div><div className="hdr-sub">اضغط مطولاً لاستعادة كشف</div></div>
         <button className="hbtn" onClick={()=>setScr('home')}><I.Back/></button>
       </div>
       <div className="scr pb">
@@ -696,13 +711,21 @@ function MainApp({ user, onLogout }) {
           ? <div className="empty"><div className="empty-i">📋</div><div className="empty-t">لا توجد كشوفات بعد<br/>قم بترحيل الشهر أولاً</div></div>
           : [...data.statements].reverse().map(s=>(
             <div key={s.id} className="stc">
-              <button className="st-hdr" onClick={()=>setES(expStmt===s.id?null:s.id)}>
-                <div className="st-title"><I.Lock/>{s.label}</div>
-                <div className="st-badge">مقفل ✓</div>
+              <button className="st-hdr"
+                onPointerDown={()=>startLongPress(s)}
+                onPointerUp={cancelLongPress}
+                onPointerLeave={cancelLongPress}
+                onContextMenu={e=>{e.preventDefault();cancelLongPress()}}
+                onClick={()=>{ if(pressWasLong.current){pressWasLong.current=false;return}; setES(expStmt===s.id?null:s.id) }}>
+                <div className="st-title">{s.restored?<I.Unlock/>:<I.Lock/>}{s.label}</div>
+                <div className="st-badge" style={s.restored?{background:'rgba(22,163,74,.15)',color:'#4ade80',borderColor:'rgba(22,163,74,.3)'}:{}}>{s.restored?'مستعاد 🔓':'مقفل ✓'}</div>
               </button>
               {expStmt===s.id && (
                 <div className="st-body">
-                  <div style={{fontSize:10,color:'var(--tx3)',marginBottom:7}}>تاريخ الإقفال: {fmt(s.lockedAt)}</div>
+                  <div style={{fontSize:10,color:'var(--tx3)',marginBottom:7}}>
+                    تاريخ الإقفال: {fmt(s.lockedAt)}
+                    {s.restored && <span style={{marginRight:8,color:'#4ade80'}}>· تمت الاستعادة: {fmt(s.restoredAt)}</span>}
+                  </div>
                   {s.snapshot.map(r=>(
                     <div key={r.friendId} className="st-row">
                       <span className="st-rn">{r.friendName}</span>
@@ -721,17 +744,32 @@ function MainApp({ user, onLogout }) {
                       nativeShare({title:'كشف حساب حساباتي',text:lines.join('\n')})
                     }}><I.Share/>مشاركة</button>
                   </div>
-                  <button onClick={()=>restoreStmt(s)} style={{width:'100%',marginTop:10,padding:'10px 0',background:'var(--sf2)',border:'1px solid rgba(212,168,67,.35)',borderRadius:'var(--rx)',fontSize:12,fontWeight:600,color:'var(--gold)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6,transition:'all .2s'}}
-                    onMouseOver={e=>e.currentTarget.style.background='rgba(212,168,67,.12)'}
-                    onMouseOut={e=>e.currentTarget.style.background='var(--sf2)'}>
-                    <I.Unlock/>فتح الكشف وإضافته للشهر الحالي
-                  </button>
+                  {!s.restored && (
+                    <div style={{fontSize:10,color:'var(--tx3)',textAlign:'center',marginTop:10,opacity:.7}}>اضغط مطولاً على صف الشهر لاستعادته</div>
+                  )}
                 </div>
               )}
             </div>
           ))
         }
       </div>
+
+      {restoreTarget && (
+        <div className="ov" onClick={()=>setRestoreTarget(null)}>
+          <div className="sht" onClick={e=>e.stopPropagation()}>
+            <div className="sht-h"/>
+            <div className="sht-title">فتح الكشف<button className="sht-close" onClick={()=>setRestoreTarget(null)}><I.X/></button></div>
+            <div style={{fontSize:13,color:'var(--tx2)',marginBottom:12,lineHeight:1.7}}>
+              هل تريد فتح كشف <strong style={{color:'var(--gold)'}}>{restoreTarget.label}</strong> وإعادة معاملاته للشهر الحالي؟
+            </div>
+            <div style={{fontSize:11,color:'var(--tx3)',marginBottom:20,background:'var(--sf2)',padding:'10px 12px',borderRadius:8,lineHeight:1.6}}>
+              سيبقى الكشف محفوظاً في الأرشيف ويُعلَّم كـ «مستعاد»، وستُضاف معاملاته للشهر النشط
+            </div>
+            <button className="btn-g" style={{marginBottom:10}} onClick={()=>restoreStmt(restoreTarget)}><I.Unlock/>فتح الكشف</button>
+            <button className="btn-d" onClick={()=>setRestoreTarget(null)}>إلغاء</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 
