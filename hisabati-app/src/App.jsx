@@ -233,6 +233,167 @@ function OTPStep({ phone, onVerified, onBack }) {
   </>)
 }
 
+// ── Forgot Password Flow ──────────────────────────────────────────────────────
+function ForgotPasswordFlow({ onBack, onDone }) {
+  const [step, setStep]     = useState('email')
+  const [email, setEmail]   = useState('')
+  const [otpVal, setOtpVal] = useState(null)
+  const [code, setCode]     = useState(['','','','','',''])
+  const [timer, setTimer]   = useState(300)
+  const [newPwd, setNewPwd] = useState('')
+  const [cfmPwd, setCfmPwd] = useState('')
+  const [showP, setShowP]   = useState(false)
+  const [showC, setShowC]   = useState(false)
+  const [err, setErr]       = useState('')
+  const [loading, setLoad]  = useState(false)
+  const refs = useRef([])
+
+  const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+  const sendCode = async () => {
+    setErr('')
+    const uid = email.trim().toLowerCase()
+    if (!emailRx.test(uid)) { setErr('صيغة البريد غير صحيحة'); return }
+    setLoad(true)
+    const users = (await kv('get', USERS_KEY)) || {}
+    if (!users[uid]) { setErr('لا يوجد حساب بهذا البريد الإلكتروني'); setLoad(false); return }
+    const c = genOTP()
+    setOtpVal(c)
+    await kv('set', OTP_KEY, { code: c, email: uid, exp: Date.now() + 5*60*1000 })
+    setLoad(false); setTimer(300); setCode(['','','','','','']); setStep('otp')
+    setTimeout(() => refs.current[0]?.focus(), 100)
+  }
+
+  useEffect(() => {
+    if (step !== 'otp' || timer <= 0) return
+    const id = setInterval(() => setTimer(t => { if(t<=1){clearInterval(id);return 0} return t-1 }), 1000)
+    return () => clearInterval(id)
+  }, [step, timer])
+
+  const handleBox = (i, val) => {
+    const d = val.replace(/\D/g,'').slice(-1)
+    const nc = [...code]; nc[i] = d; setCode(nc)
+    if (d && i < 5) refs.current[i+1]?.focus()
+    if (!d && i > 0) refs.current[i-1]?.focus()
+  }
+  const handleKey = (i, e) => { if (e.key==='Backspace' && !code[i] && i>0) refs.current[i-1]?.focus() }
+  const handlePaste = e => {
+    e.preventDefault()
+    const p = e.clipboardData.getData('text').replace(/\D/g,'').slice(0,6)
+    if (p.length===6) { setCode(p.split('')); refs.current[5]?.focus() }
+  }
+
+  const verifyCode = async () => {
+    const entered = code.join('')
+    if (entered.length < 6) { setErr('أدخل الرمز المكوّن من 6 أرقام'); return }
+    setLoad(true)
+    const stored = await kv('get', OTP_KEY)
+    if (!stored || Date.now() > stored.exp) { setErr('انتهت صلاحية الرمز، اطلب رمزاً جديداً'); setLoad(false); return }
+    if (stored.code !== entered) { setErr('الرمز غير صحيح'); setLoad(false); return }
+    await kv('del', OTP_KEY)
+    setLoad(false); setErr(''); setStep('newpwd')
+  }
+
+  const saveNewPwd = async () => {
+    setErr('')
+    if (newPwd.length < 8) { setErr('كلمة المرور 8 أحرف على الأقل'); return }
+    if (newPwd !== cfmPwd) { setErr('كلمتا المرور غير متطابقتين'); return }
+    setLoad(true)
+    const uid = email.trim().toLowerCase()
+    const users = (await kv('get', USERS_KEY)) || {}
+    if (!users[uid]) { setErr('حدث خطأ، حاول مجدداً'); setLoad(false); return }
+    users[uid] = { ...users[uid], hash: await hashPwd(newPwd) }
+    await kv('set', USERS_KEY, users)
+    setLoad(false); onDone()
+  }
+
+  const m = String(Math.floor(timer/60)).padStart(2,'0')
+  const s = String(timer%60).padStart(2,'0')
+
+  if (step === 'email') return (<>
+    {err && <div className="a-err">⚠️ {err}</div>}
+    <div className="afield">
+      <label>البريد الإلكتروني المسجّل</label>
+      <div className="aiwrap">
+        <input className="ainput ltr" placeholder="example@email.com" value={email}
+          onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendCode()}
+          type="email" inputMode="email" autoFocus/>
+        <span className="ai-icon"><I.Mail/></span>
+      </div>
+    </div>
+    <button className="a-btn" onClick={sendCode} disabled={loading}>
+      {loading?<><div className="spin" style={{width:15,height:15,borderWidth:2,borderColor:'rgba(0,0,0,.25)',borderTopColor:'#160f00'}}/>جاري...</>:<><I.Mail/>إرسال رمز التحقق</>}
+    </button>
+    <button className="a-ghost" onClick={onBack}><I.Back/>رجوع لتسجيل الدخول</button>
+  </>)
+
+  if (step === 'otp') return (<>
+    <div className="otp-tag"><span>📧 {email.trim().toLowerCase()}</span><span onClick={()=>{setStep('email');setErr('')}}>تعديل</span></div>
+    {otpVal && (
+      <div className="sms-wrap">
+        <div className="sms-hdr">
+          <div className="sms-av">✉️</div>
+          <div><div className="sms-name">حساباتي — إعادة تعيين كلمة المرور</div></div>
+          <div className="sms-time">الآن</div>
+        </div>
+        <div className="sms-msg">رمز إعادة تعيين كلمة المرور الخاص بك:</div>
+        <div className="sms-code">{otpVal}</div>
+        <div className="sms-note">لا تشارك هذا الرمز مع أحد · صالح 5 دقائق</div>
+      </div>
+    )}
+    {err && <div className="a-err">⚠️ {err}</div>}
+    <div className="fg">
+      <label>أدخل رمز التحقق</label>
+      <div className="otp-boxes">
+        {code.map((v,i) => (
+          <input key={i} ref={el=>refs.current[i]=el} className={`otp-b ${v?'on':''}`}
+            type="tel" inputMode="numeric" maxLength={1} value={v}
+            onChange={e=>handleBox(i,e.target.value)} onKeyDown={e=>handleKey(i,e)} onPaste={handlePaste}/>
+        ))}
+      </div>
+      <div className="otp-timer">{timer>0?<span>ينتهي خلال <b>{m}:{s}</b></span>:<span style={{color:'var(--red)'}}>انتهت الصلاحية</span>}</div>
+      {timer===0 ? <div className="otp-rsnd" onClick={sendCode}>↺ إعادة الإرسال</div>
+                 : <div className="otp-rsnd off">إعادة الإرسال ({m}:{s})</div>}
+    </div>
+    <button className="a-btn" onClick={verifyCode} disabled={loading||code.join('').length<6}>
+      {loading?<><div className="spin" style={{width:15,height:15,borderWidth:2}}/>جاري التحقق...</>:<><I.Shield/>تأكيد الرمز</>}
+    </button>
+    <button className="a-ghost" onClick={()=>{setStep('email');setErr('')}}><I.Back/>رجوع</button>
+  </>)
+
+  // newpwd step
+  const ps2 = (p) => { if(!p)return 0; let sc=0; if(p.length>=8)sc++; if(/[A-Z]/.test(p))sc++; if(/[0-9]/.test(p))sc++; if(/[^A-Za-z0-9]/.test(p))sc++; return sc }
+  const str2 = ps2(newPwd)
+  const sLbl2 = ['','ضعيفة','متوسطة','جيدة','قوية'][str2]
+  const sCls2 = ['','sw','sm','sg','sg'][str2]
+
+  return (<>
+    {err && <div className="a-err">⚠️ {err}</div>}
+    <div className="afield">
+      <label>كلمة المرور الجديدة</label>
+      <div className="aiwrap">
+        <input className="ainput ltr" type={showP?'text':'password'} placeholder="••••••••"
+          value={newPwd} onChange={e=>setNewPwd(e.target.value)} style={{paddingLeft:42}} autoComplete="new-password" autoFocus/>
+        <button className="a-eye" type="button" onClick={()=>setShowP(p=>!p)}>{showP?<I.EyeOff/>:<I.Eye/>}</button>
+      </div>
+      {newPwd && (<><div className="pbar"><div className={`pbar-f ${sCls2}`} style={{width:`${(str2/4)*100}%`}}/></div><div style={{fontSize:10,color:'var(--tx3)',marginTop:3}}>قوة كلمة المرور: {sLbl2}</div></>)}
+    </div>
+    <div className="afield">
+      <label>تأكيد كلمة المرور الجديدة</label>
+      <div className="aiwrap">
+        <input className="ainput ltr" type={showC?'text':'password'} placeholder="••••••••"
+          value={cfmPwd} onChange={e=>setCfmPwd(e.target.value)} onKeyDown={e=>e.key==='Enter'&&saveNewPwd()}
+          style={{paddingLeft:42,borderColor:cfmPwd&&cfmPwd!==newPwd?'var(--red)':''}} autoComplete="new-password"/>
+        <button className="a-eye" type="button" onClick={()=>setShowC(p=>!p)}>{showC?<I.EyeOff/>:<I.Eye/>}</button>
+      </div>
+      {cfmPwd && cfmPwd!==newPwd && <div style={{fontSize:10,color:'var(--red)',marginTop:3}}>كلمتا المرور غير متطابقتين</div>}
+    </div>
+    <button className="a-btn" onClick={saveNewPwd} disabled={loading}>
+      {loading?<><div className="spin" style={{width:15,height:15,borderWidth:2,borderColor:'rgba(0,0,0,.25)',borderTopColor:'#160f00'}}/>جاري الحفظ...</>:<><I.Check/>حفظ كلمة المرور الجديدة</>}
+    </button>
+  </>)
+}
+
 // ── Auth Screen ───────────────────────────────────────────────────────────────
 function AuthScreen({ onLogin }) {
   const [mode, setMode]     = useState('login')
@@ -247,6 +408,8 @@ function AuthScreen({ onLogin }) {
   const [err, setErr]       = useState('')
   const [loading, setLoad]  = useState(false)
   const [pending, setPend]  = useState(null)
+  const [forgotMode, setForgotMode] = useState(false)
+  const [forgotOk, setForgotOk]     = useState(false)
 
   const phoneRx = /^05\d{8}$/
   const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -309,15 +472,18 @@ function AuthScreen({ onLogin }) {
         <div className="orb orb1"/><div className="orb orb2"/>
         <div className="a-logo">💰</div>
         <div className="a-title">حساباتي</div>
-        <div className="a-sub">{step==='otp'?'تحقق من رقم جوالك':mode==='login'?'أهلاً بعودتك! سجّل دخولك':'أنشئ حسابك الجديد'}</div>
+        <div className="a-sub">{forgotMode?'إعادة تعيين كلمة المرور':step==='otp'?'تحقق من رقم جوالك':mode==='login'?'أهلاً بعودتك! سجّل دخولك':'أنشئ حسابك الجديد'}</div>
         <div className="a-card">
-          {step==='otp'
+          {forgotMode
+            ? <ForgotPasswordFlow onBack={()=>setForgotMode(false)} onDone={()=>{setForgotMode(false);setForgotOk(true)}}/>
+            : step==='otp'
             ? <OTPStep phone={nId(id)} onVerified={otpDone} onBack={()=>setStep('form')}/>
             : (<>
                 <div className="m-tabs">
                   <button className={`m-tab ${method==='phone'?'on':''}`} onClick={()=>{setMethod('phone');setId('');setErr('')}}><I.Phone/>رقم الجوال</button>
                   <button className={`m-tab ${method==='email'?'on':''}`} onClick={()=>{setMethod('email');setId('');setErr('')}}><I.Mail/>البريد</button>
                 </div>
+                {forgotOk && <div className="a-ok">✅ تم تغيير كلمة المرور بنجاح، سجّل دخولك الآن</div>}
                 {err && <div className="a-err">⚠️ {err}</div>}
                 {mode==='register' && (
                   <div className="afield"><label>الاسم</label>
@@ -338,6 +504,11 @@ function AuthScreen({ onLogin }) {
                   </div>
                   {mode==='register' && pwd && (<><div className="pbar"><div className={`pbar-f ${sCls}`} style={{width:`${(str/4)*100}%`}}/></div><div style={{fontSize:10,color:'var(--tx3)',marginTop:3}}>قوة كلمة المرور: {sLbl}</div></>)}
                 </div>
+                {mode==='login' && method==='email' && (
+                  <div style={{textAlign:'left',marginTop:-6,marginBottom:8}}>
+                    <span onClick={()=>{setForgotMode(true);setErr('');setForgotOk(false)}} style={{fontSize:11,color:'var(--gold)',cursor:'pointer',textDecoration:'underline',opacity:.85}}>نسيت كلمة المرور؟</span>
+                  </div>
+                )}
                 {mode==='register' && (
                   <div className="afield"><label>تأكيد كلمة المرور</label>
                     <div className="aiwrap">
